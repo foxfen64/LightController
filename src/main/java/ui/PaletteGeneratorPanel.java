@@ -13,6 +13,7 @@ import java.awt.event.ActionListener;
 import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.Comparator;
 import java.util.Scanner;
 
 public class PaletteGeneratorPanel extends JPanel implements ActionListener {
@@ -125,6 +126,14 @@ public class PaletteGeneratorPanel extends JPanel implements ActionListener {
 
     private void syncColors(Color[] colors){
         if(colors == null) return;
+
+        Arrays.sort(colors, new Comparator<Color>() {
+            @Override
+            public int compare(Color o1, Color o2) {
+                return (int)((Math.random() -.5 ) * 100);
+            }
+        });
+
         for(int i = 0; i < bulbs.size(); i++){
             SmartBulb bulb = bulbs.get(i);
             bulb.setRGB(colors[i].getRed(), colors[i].getGreen(), colors[i].getBlue(), bulb.getBrightness(), null);

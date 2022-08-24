@@ -7,6 +7,10 @@ import java.net.*;
 import java.nio.ByteBuffer;
 import java.io.IOException;
 import java.util.Arrays;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledThreadPoolExecutor;
 
 import com.google.gson.*;
 
@@ -22,6 +26,8 @@ public class SmartBulb {
     public boolean isOn;
     private int hue, saturation, brightness;
     private int colorTemp;
+    private ExecutorService executor;
+    Callable<String> sendCommandCall;
 
     protected static final String COMMAND_INFO = "{\"system\":{\"get_sysinfo\":{}}}";
     protected static final String COMMAND_GET_LIGHT_INFO = "{\"smartlife.iot.smartbulb.lightingservice\":{\"get_light_details\":\"\"}}";
@@ -34,6 +40,8 @@ public class SmartBulb {
     public SmartBulb(String ip, Integer port, String jsonInfo) {
         this.ip = ip;
         this.port = (port == null) ? 9999: port;
+        executor = new ScheduledThreadPoolExecutor(1);
+
 
         if(jsonInfo != null) {
             try{
@@ -214,11 +222,19 @@ public class SmartBulb {
         sendCommand(OFF_COMMAND_INFO);
     }
 
+    public void setColor(Color c, Integer brightness, Integer transition){
+        this.setRGB(c.getRed(), c.getGreen(), c.getBlue(), brightness, transition);
+    }
+
     public void setHSB(Integer hue, Integer saturation, Integer value, Integer transition){
+        int scaledTransition = 0;
+        if(transition != null)
+            scaledTransition = (int)(((float)transition) * .8);
+
         try{
             String command = String.format("{\"smartlife.iot.smartbulb.lightingservice\":{\"transition_light_state\":" +
                             "{\"ignore_default\":1, \"on_off\":1,\"hue\":%s,\"saturation\":%s,\"brightness\":%s, \"color_temp\":0,\"transition_period\":%s}}}",
-                    hue, saturation, value, (transition == null) ? 0 : transition
+                    hue, saturation, value, (transition == null) ? 0 : scaledTransition
             );
             String response = sendCommand(command);
         }catch(Exception e){
@@ -246,7 +262,25 @@ public class SmartBulb {
     public int getBrightness(){ return brightness; }
 
     public String sendCommand(String command) {
-        String response = BulbUtils.sendComamnd(command, this.ip, this.port);
+        String response = null;
+        String ip = this.ip;
+        int port = this.port;
+
+        try{
+            sendCommandCall = new Callable<String>() {
+                @Override
+                public String call() throws Exception {
+                    if(Thread.currentThread().isInterrupted()){
+                        System.out.println("Interrupted: " + command);
+                    }
+
+                    return BulbUtils.sendComamnd(command, ip, port);
+                }
+            };
+            response  = executor.submit(sendCommandCall).get();
+        }catch(Exception e){
+            e.printStackTrace();
+        }
         setInfo(response);
         return response;
     }

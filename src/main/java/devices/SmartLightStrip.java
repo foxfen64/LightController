@@ -68,13 +68,13 @@ public class SmartLightStrip extends SmartBulb{
     @Override
     public void turnOn()  {
         String command = "{\"smartlife.iot.lightStrip\":{\"set_light_state\":{\"ignore_default\":1,\"on_off\":1}}}";
-        super.sendCommand(command);
+        sendCommand(command);
     }
 
     @Override
     public void turnOff()  {
         String command = "{\"smartlife.iot.lightStrip\":{\"set_light_state\":{\"ignore_default\":1,\"on_off\":0}}}";
-        super.sendCommand(command);
+        sendCommand(command);
     }
 
     // Set entire light the same color
